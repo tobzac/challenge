@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 from matplotlib import rcParams
+import datetime as dt
 # importing re for regular expressions
 import re
 
@@ -74,7 +75,12 @@ test_table_bikes["started_at"] = pd.to_datetime(test_table_bikes["started_at"])
 test_table_bikes["duration"] = test_table_bikes["ended_at"] - test_table_bikes["started_at"]
 test_table_bikes["diff_lat"] = test_table_bikes["end_lat"] - test_table_bikes["start_lat"]
 test_table_bikes["diff_lng"] = test_table_bikes["end_lng"] - test_table_bikes["start_lng"]
-#test_table["direct_distance"] = 
+
+# unter Verwendung von https://wiki.openstreetmap.org/wiki/DE:Genauigkeit_von_Koordinaten
+# 1 Längengrad Differenz entspricht auf Breite 40 Grad (NYC): 85118 Meter
+# 1 Breitengrad Differenz entspricht 111120 Meter
+test_table_bikes["direct_distance"] = np.sqrt(np.power(test_table_bikes["diff_lat"] * 111120, 2.0) + np.power(test_table_bikes["diff_lng"] * 85118, 2.0))
+
 
 test_table_bikes
 
@@ -203,29 +209,62 @@ sns.set_style("whitegrid")
 sns.scatterplot(data=df_coords, x="longitude", y="latitude", s=12, hue='usage').set_title("citibikenyc stations", size=20)
 df_coords
 
+#print(n_occurences_start["W 54 St & 11 Ave"])
+#print(n_occurences_end["W 54 St & 11 Ave"])
+#df_coords
+
 
 # In[11]:
 
 
-# plots stations
+# Verteilung Ausleih Startzeiten/Endzeiten
 
+start_times = pd.DataFrame(test_table_bikes_cleaned["started_at"])
+end_times = pd.DataFrame(test_table_bikes_cleaned["ended_at"])
+
+times = pd.concat([start_times, end_times], axis=1)
+times["started_at"] = times["started_at"].dt.hour
+times["ended_at"] = times["ended_at"].dt.hour        
+times
+
+sns.histplot(data=times, x="started_at", shrink = 4).set_title("Distribution of start hour of rent during day")
+
+
+# klar sichtbar: superposition 2er Verteilungen: einer Arbeits/Berufsverkehr Verteilung, welche um 8 Uhr Morgens und 17 Nachmittags peaked und einer Basis-Verteilung von Ausleihen, welche wahrscheinlich um 14/15 Uhr peaked. Hierdurch könnte man grob den Anteil des reinen Berufsverkehrs/transits in den Ausleihen schätzen. Weg zur Arbeit könnte Versicherungs-technisch besonders relevant sein...
 
 # In[12]:
 
 
-# Verteilung Ausleih Startzeiten/Endzeiten
+sns.histplot(data=times, x="ended_at", shrink = 4).set_title("Distribution of end hour of rent during day")
 
 
 # In[13]:
 
 
-# Verteilung distances End-Startpunkt
+# Verteilung duration
+duration = pd.DataFrame(test_table_bikes_cleaned["duration"].dt.total_seconds() / 60)
+#remove 50 largest values as some quite large outliers
+duration = duration.drop(duration["duration"].sort_values().tail(50).index)
+duration
+
+sns.histplot(data=duration, x="duration", bins=200, binrange=(0,100)).set_title("Distribution of rent lengths")
 
 
 # In[14]:
 
 
-# Verteilung Ausleihzeiten
+# Verteilung direct distances End-Startpunkt
+sns.histplot(data=test_table_bikes_cleaned, x="direct_distance", bins=200, binrange=(0,10000)).set_title("Distribution of direct distance between start/end point of trip")
+
+
+# In[15]:
+
+
+# classical bike vs electric bike
+df_types = pd.DataFrame(test_table_bikes_cleaned["rideable_type"].value_counts())
+df_types.rename(columns = {"rideable_type": "occurence"}, inplace=True)
+df_types
+sns.barplot(data=df_types, x=df_types.index, y="occurence").set_title("classic or electrical")
 
 
 # ## Unfall Statistik NYC
@@ -233,7 +272,7 @@ df_coords
 # Download als csv Datei von https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95/about_data
 # 
 
-# In[ ]:
+# In[16]:
 
 
 #Einlesen der Unfall Daten von NYC
@@ -242,15 +281,52 @@ table_accidents = pd.read_csv("Data/Motor_Vehicle_Collisions_-_Crashes_20250319.
 table_accidents.dtypes
 
 
-# In[ ]:
+# In[17]:
 
 
-crash_dates = list(table_accidents["CRASH DATE"].unique())
-print(crash_dates)
+#crash_dates = list(table_accidents["CRASH DATE"].unique())
+#print(crash_dates)
 
 
-# In[ ]:
+# In[18]:
 
 
+table_accidents
 
+
+# In[19]:
+
+
+# check NaNs for injury/death numbers
+column_list = ["CRASH DATE", "CRASH_TIME", "NUMBER OF PERSONS INJURED", "NUMBER OF PERSONS KILLED", "NUMBER OF PEDESTRIANS INJURED", "NUMBER OF PEDESTRIANS KILLED",               "NUMBER OF CYCLIST INJURED", "NUMBER OF CYCLIST KILLED", "NUMBER OF MOTORIST INJURED", "NUMBER OF MOTORIST KILLED"]
+table_injuries_deaths = table_accidents[[c for c in table_accidents.columns if c in column_list]]
+
+print("injury/deaths columns: ")
+print("Rows before dropping nans: " + str(len(table_injuries_deaths)))
+table_injuries_deaths.dropna(inplace =True)
+print("Rows after dropping nans: " + str(len(table_injuries_deaths)))
+
+
+# In[20]:
+
+
+# check NaNs for longitude/latitude
+table_long_lat = table_accidents[["LATITUDE", "LONGITUDE"]]
+
+print("long/lat columns: ")
+print("Rows before dropping nans: " + str(len(table_long_lat)))
+table_long_lat.dropna(inplace =True)
+print("Rows after dropping nans: " + str(len(table_long_lat)))
+
+
+# In[21]:
+
+
+# check NaNs for vehicle 1 info
+table_vehicle_1 = table_accidents[["CONTRIBUTING FACTOR VEHICLE 1", "VEHICLE TYPE CODE 1"]]
+
+print("vehicle 1 columns: ")
+print("Rows before dropping nans: " + str(len(table_vehicle_1)))
+table_vehicle_1.dropna(inplace =True)
+print("Rows after dropping nans: " + str(len(table_vehicle_1)))
 
