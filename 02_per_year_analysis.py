@@ -68,7 +68,7 @@ df_coords_total_min_usage = df_coords_total[df_coords_total["usage"] > min_usage
 df_coords_total_min_usage
 
 
-# In[5]:
+# In[24]:
 
 
 sns.set_style("whitegrid")
@@ -76,12 +76,14 @@ norm = plt.Normalize(df_coords_total_min_usage['usage'].min(), df_coords_total_m
 sm = plt.cm.ScalarMappable(cmap="Reds", norm=norm)
 sm.set_array([])
 
-ax = sns.scatterplot(data=df_coords_total_min_usage, x="longitude", y="latitude", s=15, hue='usage', palette='Reds')
-ax.set_title("citibikenyc stations with minimal usage of " + str(min_usage) + " rents/arrivals per year", size=18)
+fig, ax = plt.subplots()
+
+fig = sns.scatterplot(data=df_coords_total_min_usage, x="longitude", y="latitude", s=15, hue='usage', palette='Reds')
+fig.set_title("citibikenyc stations with minimal usage of " + str(min_usage) + " rents/arrivals per year", size=18)
 
 # Remove the legend and add a colorbar
-ax.get_legend().remove()
-ax.figure.colorbar(sm)
+fig.get_legend().remove()
+fig.figure.colorbar(sm, ax=ax)
 df_coords_total_min_usage
 
 
@@ -89,7 +91,7 @@ df_coords_total_min_usage
 # 
 # ### monthly intervalls
 
-# In[6]:
+# In[25]:
 
 
 #Einlesen der Unfall Daten von NYC
@@ -98,7 +100,7 @@ table_accidents = pd.read_csv("Data/Motor_Vehicle_Collisions_-_Crashes_20250319.
 table_accidents
 
 
-# In[7]:
+# In[26]:
 
 
 # restrict to year of interest
@@ -108,7 +110,7 @@ table_accidents_year = table_accidents[table_accidents["CRASH DATE"].dt.year == 
 table_accidents_year
 
 
-# In[8]:
+# In[27]:
 
 
 sum = 0
@@ -142,26 +144,29 @@ print(sum)
 print(results_accidents)
 
 
-# In[9]:
+# In[28]:
 
 
 df_accidents_year = pd.DataFrame.from_dict(results_accidents)
 df_accidents_year["CHECK"] = df_accidents_year["NUMBER OF PEDESTRIANS INJURED"] + df_accidents_year["NUMBER OF CYCLIST INJURED"] + df_accidents_year["NUMBER OF MOTORIST INJURED"]
 df_accidents_year["month"] = df_bike_trips_year.index
-df_accidents_year_long = pd.melt(df_accidents_year, id_vars=['month'], value_vars=['NUMBER OF PERSONS INJURED', 'NUMBER OF PERSONS KILLED',                                                       'NUMBER OF PEDESTRIANS INJURED', 'NUMBER OF PEDESTRIANS KILLED',                                                       'NUMBER OF CYCLIST INJURED', 'NUMBER OF CYCLIST KILLED',                                                       'NUMBER OF MOTORIST INJURED', 'NUMBER OF MOTORIST KILLED'], ignore_index=False).reset_index(drop=True)
+df_accidents_year_long = pd.melt(df_accidents_year, id_vars=['month'], value_vars=['NUMBER OF PERSONS INJURED', 'NUMBER OF PERSONS KILLED', \
+                                                      'NUMBER OF PEDESTRIANS INJURED', 'NUMBER OF PEDESTRIANS KILLED', \
+                                                      'NUMBER OF CYCLIST INJURED', 'NUMBER OF CYCLIST KILLED', \
+                                                      'NUMBER OF MOTORIST INJURED', 'NUMBER OF MOTORIST KILLED'], ignore_index=False).reset_index(drop=True)
 
 df_accidents_year_long['value'] = df_accidents_year_long['value'].astype(int)
 df_accidents_year_long = df_accidents_year_long.sort_values(by=['month', 'variable'])
 df_accidents_year_long
 
 
-# In[10]:
+# In[29]:
 
 
 rcParams['figure.figsize'] = 15,10
 
 
-# In[11]:
+# In[30]:
 
 
 # injured plot
@@ -171,7 +176,7 @@ df_accidents_year_long_injured
 sns.barplot(data = df_accidents_year_long_injured, x = 'month', y='value', hue='variable').set_title('NYC accident injuries per month in 2023')
 
 
-# In[12]:
+# In[31]:
 
 
 # killed plot
@@ -181,7 +186,7 @@ df_accidents_year_long_killed
 sns.barplot(data = df_accidents_year_long_killed, x = 'month', y='value', hue='variable').set_title('NYC accident deaths per month in 2023')
 
 
-# In[13]:
+# In[32]:
 
 
 # cyclists only (as relevant for citibikenyc, injured and killed)
@@ -196,7 +201,7 @@ df_cyclists.sort_values('month', inplace = True)
 df_cyclists
 
 
-# In[14]:
+# In[33]:
 
 
 g = sns.FacetGrid(df_cyclists, col="variable", sharey=False)
@@ -205,7 +210,7 @@ g.map(sns.scatterplot, "month", "value", s=100, alpha=.5)
 
 # ### per year
 
-# In[15]:
+# In[34]:
 
 
 accidents_coords = table_accidents_year[["LATITUDE", "LONGITUDE"]]
@@ -220,7 +225,7 @@ accidents_coords_cleaned.rename(columns={'LONGITUDE': 'longitude', 'LATITUDE': '
 accidents_coords_cleaned
 
 
-# In[16]:
+# In[35]:
 
 
 # make map with injuries/deaths per year
@@ -229,7 +234,7 @@ sns.set_style("whitegrid")
 sns.scatterplot(data=accidents_coords_cleaned, x="longitude", y="latitude", s=2, color = 'blue').set_title("Accidents "+ str(year), size=20)
 
 
-# In[17]:
+# In[36]:
 
 
 # only plot cyclist accidents
@@ -244,14 +249,14 @@ accidents_coords_cyclists_cleaned.rename(columns={'LONGITUDE': 'longitude', 'LAT
 accidents_coords_cyclists_cleaned
 
 
-# In[18]:
+# In[37]:
 
 
 sns.set_style("whitegrid")
 sns.scatterplot(data=accidents_coords_cyclists_cleaned, x="longitude", y="latitude", s=2, color = 'blue').set_title("Cyclist accidents "+ str(year), size=20)
 
 
-# In[19]:
+# In[38]:
 
 
 # now restrict to areas near much used citibike stations (for rent/arrival)
@@ -278,7 +283,7 @@ for index, row in accidents_coords_cyclists.iterrows():
 accidents_coords_cyclists[accidents_coords_cyclists["in_region"] == 1]
 
 
-# In[20]:
+# In[39]:
 
 
 accidents_coords_cyclists_region = accidents_coords_cyclists[accidents_coords_cyclists["in_region"] == 1]
