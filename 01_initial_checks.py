@@ -25,6 +25,7 @@ import re
 # Außerdem sollen erste Möglichkeiten zur tiefergehenden Analyse und Korrelation der Daten aus beiden Quellen eruiert werden.
 # 
 # ## Daten citibikenyc
+# ### data from 2020 and later
 # 
 # Download der kompletten Daten für 2023 von https://s3.amazonaws.com/tripdata/index.html.
 # Es werden der Einfachheit hier nur die Daten von Januar 2023 betrachtet.
@@ -155,7 +156,6 @@ test_table_bikes_cleaned.end_station_id = test_table_bikes_cleaned.end_station_i
 # In[9]:
 
 
-
 # Nun noch einmal Check Station IDs/Namen:
 # Überblick über die Stationen
 # 1. a) mittels station_ids "5626.13" (Zahl + dot + Zahl):
@@ -262,9 +262,148 @@ sns.histplot(data=test_table_bikes_cleaned, x="direct_distance", bins=200, binra
 
 # classical bike vs electric bike
 df_types = pd.DataFrame(test_table_bikes_cleaned["rideable_type"].value_counts())
-df_types.rename(columns = {"rideable_type": "occurence"}, inplace=True)
+df_types.rename(columns = {"count": "occurence"}, inplace=True)
 df_types
 sns.barplot(data=df_types, x=df_types.index, y="occurence").set_title("classic or electrical")
+
+
+# ### data before 2020
+# columns have different names and also some additional/different columns, e.g. gender and age is new and not present in newer data.
+
+# In[16]:
+
+
+#test_table_bikes_old = pd.read_csv("Data/2017-citibike-tripdata/1_January/201701-citibike-tripdata.csv_1.csv")
+#test_table_bikes_old = pd.read_csv("Data/2013-citibike-tripdata/6_June/201306-citibike-tripdata_1.csv")
+#test_table_bikes_old = pd.read_csv("Data/2014-citibike-tripdata/6_June/201406-citibike-tripdata_1.csv")
+#test_table_bikes_old = pd.read_csv("Data/2015-citibike-tripdata/6_June/201506-citibike-tripdata_1.csv")
+test_table_bikes_old = pd.read_csv("Data/2016-citibike-tripdata/6_June/201606-citibike-tripdata_1.csv")
+test_table_bikes_old
+
+
+# In[17]:
+
+
+#rename columns so that analysis workflow for newer data also works here:
+
+if 'User Type' in test_table_bikes_old.columns:
+    test_table_bikes_old = test_table_bikes_old.drop(['Birth Year', 'Gender', 'User Type'], axis=1)
+    test_table_bikes_old = test_table_bikes_old.rename(columns={'Start Time': 'started_at', 'Stop Time': 'ended_at',\
+                                                            'Start Station ID': 'start_station_id', 'Start Station Name': 'start_station_name',\
+                                                            'Start Station Latitude': 'start_lat', 'Start Station Longitude': 'start_lng',\
+                                                            'End Station ID' : 'end_station_id', 'End Station Name': 'end_station_name',\
+                                                            'End Station Latitude': 'end_lat', 'End Station Longitude': 'end_lng'})
+elif 'usertype' in test_table_bikes_old.columns:
+    test_table_bikes_old = test_table_bikes_old.drop(['birth year', 'gender', 'usertype'], axis=1)
+    test_table_bikes_old = test_table_bikes_old.rename(columns={'starttime': 'started_at', 'stoptime': 'ended_at',\
+                                                            'start station id': 'start_station_id', 'start station name': 'start_station_name',\
+                                                            'start station latitude': 'start_lat', 'start station longitude': 'start_lng',\
+                                                            'end station id' : 'end_station_id', 'end station name': 'end_station_name',\
+                                                            'end station latitude': 'end_lat', 'end station longitude': 'end_lng'})
+
+test_table_bikes_old
+
+
+# In[18]:
+
+
+test_table_bikes_old["ended_at"] = pd.to_datetime(test_table_bikes_old["ended_at"], format='%m/%d/%Y %H:%M:%S')
+test_table_bikes_old["started_at"] = pd.to_datetime(test_table_bikes_old["started_at"], format='%m/%d/%Y %H:%M:%S')
+
+test_table_bikes_old["duration"] = test_table_bikes_old["ended_at"] - test_table_bikes_old["started_at"]
+test_table_bikes_old["diff_lat"] = test_table_bikes_old["end_lat"] - test_table_bikes_old["start_lat"]
+test_table_bikes_old["diff_lng"] = test_table_bikes_old["end_lng"] - test_table_bikes_old["start_lng"]
+
+# unter Verwendung von https://wiki.openstreetmap.org/wiki/DE:Genauigkeit_von_Koordinaten
+# 1 Längengrad Differenz entspricht auf Breite 40 Grad (NYC): 85118 Meter
+# 1 Breitengrad Differenz entspricht 111120 Meter
+test_table_bikes_old["direct_distance"] = np.sqrt(np.power(test_table_bikes_old["diff_lat"] * 111120, 2.0) + np.power(test_table_bikes_old["diff_lng"] * 85118, 2.0))
+
+test_table_bikes_old
+
+
+# In[19]:
+
+
+print(test_table_bikes_old[test_table_bikes_old.isnull().any(axis=1)])
+print(len(test_table_bikes_old[test_table_bikes_old.isnull().any(axis=1)]))
+test_table_bikes_old_cleaned = test_table_bikes_old.dropna()
+print(test_table_bikes_old_cleaned[test_table_bikes_old_cleaned.isnull().any(axis=1)])
+
+
+# In[20]:
+
+
+# erste plots
+#Verteilung der Stationen (alle start/end lat/lng)
+#get number of occurences of different stations
+n_occurences_start = test_table_bikes_old_cleaned['start_station_name'].value_counts().to_dict()
+n_occurences_end = test_table_bikes_old_cleaned['end_station_name'].value_counts().to_dict()
+n_occurences = {key: n_occurences_start.get(key, 0) + n_occurences_end.get(key, 0) for key in set(n_occurences_start) | set(n_occurences_end)}
+df_n_occurences = pd.DataFrame.from_dict(n_occurences, orient='index').rename(columns={0: 'usage'})
+
+
+# iterate through table and form map with coordinates of different stations
+start_station_names_to_coords = pd.Series(list(zip(test_table_bikes_old_cleaned['start_lng'], test_table_bikes_old_cleaned['start_lat'])), index=test_table_bikes_old_cleaned.start_station_name).to_dict()
+end_station_names_to_coords = pd.Series(list(zip(test_table_bikes_old_cleaned['end_lng'], test_table_bikes_old_cleaned['end_lat'])), index=test_table_bikes_old_cleaned.end_station_name).to_dict()
+
+station_names_to_coords = start_station_names_to_coords
+station_names_to_coords.update(end_station_names_to_coords)
+station_names_to_coords
+#len(station_names_to_coords)
+df_coords = pd.DataFrame.from_dict(station_names_to_coords, orient='index')
+df_coords = df_coords.rename(columns={0: 'longitude', 1: 'latitude'})
+df_coords = df_coords.join(df_n_occurences)
+
+#remove long/lat == zero cases
+df_coords = df_coords[df_coords['latitude'] != 0]
+
+# figure size in inches
+rcParams['figure.figsize'] = 11.7,8.27
+sns.set_style("whitegrid")
+sns.scatterplot(data=df_coords, x="longitude", y="latitude", s=12, hue='usage').set_title("citibikenyc stations", size=20)
+df_coords
+
+
+# In[21]:
+
+
+# Verteilung Ausleih Startzeiten/Endzeiten
+
+start_times = pd.DataFrame(test_table_bikes_old_cleaned["started_at"])
+end_times = pd.DataFrame(test_table_bikes_old_cleaned["ended_at"])
+
+times = pd.concat([start_times, end_times], axis=1)
+times["started_at"] = times["started_at"].dt.hour
+times["ended_at"] = times["ended_at"].dt.hour        
+times
+
+sns.histplot(data=times, x="started_at", shrink = 4).set_title("Distribution of start hour of rent during day")
+
+
+# In[22]:
+
+
+sns.histplot(data=times, x="ended_at", shrink = 4).set_title("Distribution of end hour of rent during day")
+
+
+# In[23]:
+
+
+# Verteilung duration
+duration = pd.DataFrame(test_table_bikes_old_cleaned["duration"].dt.total_seconds() / 60)
+#remove 50 largest values as some quite large outliers
+duration = duration.drop(duration["duration"].sort_values().tail(50).index)
+duration
+
+sns.histplot(data=duration, x="duration", bins=200, binrange=(0,100)).set_title("Distribution of rent lengths")
+
+
+# In[24]:
+
+
+# Verteilung direct distances End-Startpunkt
+sns.histplot(data=test_table_bikes_old_cleaned, x="direct_distance", bins=200, binrange=(0,10000)).set_title("Distribution of direct distance between start/end point of trip")
 
 
 # ## Unfall Statistik NYC
@@ -272,7 +411,7 @@ sns.barplot(data=df_types, x=df_types.index, y="occurence").set_title("classic o
 # Download als csv Datei von https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95/about_data
 # 
 
-# In[16]:
+# In[25]:
 
 
 #Einlesen der Unfall Daten von NYC
@@ -281,24 +420,25 @@ table_accidents = pd.read_csv("Data/Motor_Vehicle_Collisions_-_Crashes_20250319.
 table_accidents.dtypes
 
 
-# In[17]:
+# In[26]:
 
 
 #crash_dates = list(table_accidents["CRASH DATE"].unique())
 #print(crash_dates)
 
 
-# In[18]:
+# In[27]:
 
 
 table_accidents
 
 
-# In[19]:
+# In[28]:
 
 
 # check NaNs for injury/death numbers
-column_list = ["CRASH DATE", "CRASH_TIME", "NUMBER OF PERSONS INJURED", "NUMBER OF PERSONS KILLED", "NUMBER OF PEDESTRIANS INJURED", "NUMBER OF PEDESTRIANS KILLED",               "NUMBER OF CYCLIST INJURED", "NUMBER OF CYCLIST KILLED", "NUMBER OF MOTORIST INJURED", "NUMBER OF MOTORIST KILLED"]
+column_list = ["CRASH DATE", "CRASH_TIME", "NUMBER OF PERSONS INJURED", "NUMBER OF PERSONS KILLED", "NUMBER OF PEDESTRIANS INJURED", "NUMBER OF PEDESTRIANS KILLED",\
+               "NUMBER OF CYCLIST INJURED", "NUMBER OF CYCLIST KILLED", "NUMBER OF MOTORIST INJURED", "NUMBER OF MOTORIST KILLED"]
 table_injuries_deaths = table_accidents[[c for c in table_accidents.columns if c in column_list]]
 
 print("injury/deaths columns: ")
@@ -307,7 +447,7 @@ table_injuries_deaths.dropna(inplace =True)
 print("Rows after dropping nans: " + str(len(table_injuries_deaths)))
 
 
-# In[20]:
+# In[29]:
 
 
 # check NaNs for longitude/latitude
@@ -319,7 +459,7 @@ table_long_lat.dropna(inplace =True)
 print("Rows after dropping nans: " + str(len(table_long_lat)))
 
 
-# In[21]:
+# In[30]:
 
 
 # check NaNs for vehicle 1 info
