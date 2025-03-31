@@ -21,16 +21,13 @@ def download_url(url: str, save_path: str) -> None:
 # df_month: full (concatenated) dataframe with data from whole month
 # n_bike_trips: number of bike trips for whole month
 # df_coords: data frame with all used unique stations and their lng/lat coords
-def analysis_per_month(df_month: pd.DataFrame) -> tuple[int, pd.DataFrame]:
-    # -------------------------
-    # get number of bike trips
-    # full list used for simple stats like total number of trips etc.
-    n_bike_trips = len(df_month.index)
+def analysis_per_month(df_month: pd.DataFrame, df_geocode_all_stations: pd.DataFrame, analysis_type: str) \
+        -> tuple[int, pd.DataFrame]:
 
     # cleaned list for analyses, where values are needed
     df_month_cleaned = df_month.dropna()
 
-    # other stuff
+    # station lists
     # -------------------------------------------------------
     # get station list per month and number of stations used
     # get number of occurences of different stations
@@ -54,7 +51,29 @@ def analysis_per_month(df_month: pd.DataFrame) -> tuple[int, pd.DataFrame]:
     df_coords = df_coords.rename(columns={0: 'longitude', 1: 'latitude'})
     df_coords = df_coords.join(df_n_occurences)
 
-    # get median bike trip duration
+    # -------------------------
+    # get number of bike trips
+    n_bike_trips = 0
+    if analysis_type == "core_region":
+        # restrict the df_coords to core region for year with hard-coded core region
+        # to get core region trip counts
+        # read in geocode station list
+        df_coords= df_coords.join(df_geocode_all_stations)
+
+        df_coords = df_coords[df_coords['borough'] == 'Manhattan']
+        df_coords = df_coords[
+        (df_coords['latitude'] < (((df_coords['longitude'] + 73.965) *
+        ((40.755 - 40.78) / (-73.965 + 73.99))) + 40.755)) & (df_coords['longitude'] > -74.03)]
+
+        # count now in core region
+        # restrict df_month to core region and simply count length of resulting df
+        df_month_core = df_month[(df_month['start_station_name'].isin(df_coords.index))
+        | (df_month['end_station_name'].isin(df_coords.index))]
+
+        n_bike_trips = len(df_month_core.index)
+    elif analysis_type == "normal":
+        # full list used for simple stats like total number of trips etc.
+        n_bike_trips = len(df_month.index)
 
     return n_bike_trips, df_coords
 
@@ -64,7 +83,8 @@ def analysis_per_month(df_month: pd.DataFrame) -> tuple[int, pd.DataFrame]:
 # stations_analysis_list: list of dataframes of df_coords (unique stations and their usage in month)
 # s: total number of bike trips per year
 # df_coords_year: data frame with unique stations and usage
-def analysis_summary_year(results_map: dict, stations_analysis_list: list[pd.DataFrame]) -> tuple[int, pd.DataFrame]:
+def analysis_summary_year(results_map: dict, stations_analysis_list: list[pd.DataFrame]) \
+        -> tuple[int, pd.DataFrame]:
     # -------------------------------------------
     # sum up all bike trips to get total number:
     s = 0
@@ -92,17 +112,30 @@ def analysis_summary_year(results_map: dict, stations_analysis_list: list[pd.Dat
 # year: year for analysis
 # result_map: map: key: month, value: number of trips
 # stations_analysis_list: list of dataframes of df_coords (unique stations and their usage in month)
-def analysis_one_year(year: int) -> tuple[dict, list[pd.DataFrame]]:
+def analysis_one_year(year: int, geocode_data_file_name: str, analysis_type: str) \
+        -> tuple[dict, list[pd.DataFrame]]:
 
     # results
     result_map = {}
+    result_map_core = {}
     stations_analysis_list = []
+    stations_core_analysis_list = []
 
     base_folder_name = str(year) + "-citibike-tripdata"
     month_list = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
     numbers_2_name = {"01": "1_January", "02": "2_February", "03": "3_March", "04": "4_April",
                      "05": "5_May", "06": "6_June", "07": "7_July", "08": "8_August",
                      "09": "9_September", "10": "10_October", "11": "11_November", "12": "12_December"}
+
+    # read in pre-processed geocode station list
+    if analysis_type == "core_region":
+        print("core region analysis performed")
+    elif analysis_type == "normal":
+        print("normal all region analysis performed")
+    else:
+        sys.exit("no valid analysis type: " + analysis_type)
+
+    df_geocode_all_stations = pd.read_csv(geocode_data_file_name, index_col=0)
 
     # read in successively all data for month, then for all months
     for month in month_list:
@@ -153,7 +186,7 @@ def analysis_one_year(year: int) -> tuple[dict, list[pd.DataFrame]]:
             df_month = pd.concat(df_list, axis=0, ignore_index=True)
 
             # perform monthly analysis
-            result_n_trips, df_coords_stations = analysis_per_month(df_month)
+            result_n_trips, df_coords_stations = analysis_per_month(df_month, df_geocode_all_stations, analysis_type)
             result_map[month] = result_n_trips
             stations_analysis_list.append(df_coords_stations)
 

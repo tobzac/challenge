@@ -32,19 +32,25 @@ import analysis_functions
 # In[2]:
 
 
-year = 2022
-result_map, stations_analysis_list = analysis_functions.analysis_one_year(year)
+year = 2020
+result_map, stations_analysis_list = analysis_functions.analysis_one_year(year, 'intermediate_results/df_geocode_all_stations.csv', 'normal')
 
 
 # In[3]:
 
 
+result_map_core, stations_analysis_list_core = analysis_functions.analysis_one_year(year, 'intermediate_results/df_geocode_all_stations.csv', 'core_region')
+
+
+# In[4]:
+
+
 # plot
 result_map_extended = {}
-result_map_extended[2022] = result_map
+result_map_extended[year] = result_map
 df_bike_trips_year = pd.DataFrame.from_dict(result_map_extended)
 df_bike_trips_year["month"] = df_bike_trips_year.index
-df_bike_trips_year = df_bike_trips_year.rename(columns={2022: 'number of trips'})
+df_bike_trips_year = df_bike_trips_year.rename(columns={year: 'number of trips'})
 
 rcParams['figure.figsize'] = 11.7,8.27
 
@@ -53,11 +59,11 @@ sns.barplot(data = df_bike_trips_year, x = 'month', y = 'number of trips', color
 
 # ### all year stats
 
-# In[4]:
+# In[5]:
 
 
 # year summary
-min_usage = 50000
+min_usage = 0
 
 n_total, df_coords_total = analysis_functions.analysis_summary_year(result_map, stations_analysis_list)
 print(n_total)
@@ -65,10 +71,12 @@ df_coords_total
 
 #restrict to minimal number of usage:
 df_coords_total_min_usage = df_coords_total[df_coords_total["usage"] > min_usage]
+#restrict to reasonable bounds for plotting
+df_coords_total_min_usage = df_coords_total_min_usage[(df_coords_total_min_usage['longitude'] != 0) & (df_coords_total_min_usage['longitude'] < -73.8)]
 df_coords_total_min_usage
 
 
-# In[24]:
+# In[6]:
 
 
 sns.set_style("whitegrid")
@@ -87,11 +95,113 @@ fig.figure.colorbar(sm, ax=ax)
 df_coords_total_min_usage
 
 
+# In[7]:
+
+
+df_geocode_all_stations = pd.read_csv('intermediate_results/df_geocode_all_stations.csv', index_col=0)
+df_geocode_all_stations = df_geocode_all_stations[df_geocode_all_stations.columns.intersection(['neighbourhood', 'borough', 'city'])]
+
+# annotate generated data with neighbourhood and borough
+df_coords_total_geo = df_coords_total.join(df_geocode_all_stations)
+df_coords_total_geo
+
+
+# In[8]:
+
+
+# also restrict citibike data to core region only
+# define core region as Manhattan region that is covered by first stations in 2013
+# basically Manhattan below Central Park (use Manhattan annotation from geocode AND a linear discrimination lines below central park),
+# see notebook 04_reverse_geocode
+# and count trip as within region, when start/end of trip is within this region
+
+# determine for each year which stations are in this region
+df_coords_total_geo_core = df_coords_total_geo[df_coords_total_geo['borough'] == 'Manhattan']
+df_coords_total_geo_core = df_coords_total_geo_core[(df_coords_total_geo_core['latitude'] < (((df_coords_total_geo_core['longitude'] + 73.965)*((40.755 - 40.78)/(-73.965 + 73.99)) ) + 40.755)) & (df_coords_total_geo_core['longitude'] > -74.03)]
+
+
+#check by plotting
+sns.set_style("whitegrid")
+
+fig, ax = plt.subplots()
+
+fig = sns.scatterplot(data=df_coords_total_geo_core, x="longitude", y="latitude", s=15, size='usage', hue='borough', palette='Reds')
+fig.set_title("citibikenyc stations restricted in a year ", size=18)
+
+plt.plot([-74.03, -74.03], [40.7, 40.75], linewidth=2)
+plt.plot([-73.965, -73.99], [40.755, 40.78], linewidth=2)
+
+#okay
+
+
+# In[9]:
+
+
+## then count only on those stations for each year
+test_table_bikes = pd.read_csv("Data/2020-citibike-tripdata/202001-citibike-tripdata/202001-citibike-tripdata_1.csv")
+test_table_bikes
+
+
+# In[10]:
+
+
+# check restriction to subset of stations in df_coords_total_geo_core data frame
+test_table_bikes_restricted = test_table_bikes[(test_table_bikes['start_station_name'].isin(df_coords_total_geo_core.index)) | (test_table_bikes['end_station_name'].isin(df_coords_total_geo_core.index))]
+#test_table_bikes_restricted = (test_table_bikes['start_station_name'].isin(df_coords_total_geo_core.index)) | (test_table_bikes['end_station_name'].isin(df_coords_total_geo_core.index))
+#test_table_bikes_restricted = (test_table_bikes['start_station_name'].isin(['E 1 St & 1 Ave'])) | (test_table_bikes['end_station_name'].isin(['E 1 St & 1 Ave']))
+test_table_bikes_restricted
+
+
+# In[11]:
+
+
+df_coords_total_geo_core
+
+
+# In[12]:
+
+
+df_coords_total_geo_core.loc[['University Pl & E 14 St']]
+
+
+# In[13]:
+
+
+n_total_core, df_coords_total_core = analysis_functions.analysis_summary_year(result_map_core, stations_analysis_list_core)
+print(n_total_core)
+df_coords_total_core
+
+#restrict to minimal number of usage:
+df_coords_total_min_usage_core = df_coords_total_core[df_coords_total_core["usage"] > min_usage]
+#restrict to reasonable bounds for plotting
+df_coords_total_min_usage_core = df_coords_total_min_usage_core[(df_coords_total_min_usage_core['longitude'] != 0) & (df_coords_total_min_usage_core['longitude'] < -73.8)]
+df_coords_total_min_usage_core
+
+
+# In[14]:
+
+
+sns.set_style("whitegrid")
+norm = plt.Normalize(df_coords_total_min_usage_core['usage'].min(), df_coords_total_min_usage_core['usage'].max())
+sm = plt.cm.ScalarMappable(cmap="Reds", norm=norm)
+sm.set_array([])
+
+fig, ax = plt.subplots()
+
+fig = sns.scatterplot(data=df_coords_total_min_usage_core, x="longitude", y="latitude", s=15, hue='usage', palette='Reds')
+fig.set_title("citibikenyc stations with minimal usage of " + str(min_usage) + " rents/arrivals per year in core region", size=18)
+
+# Remove the legend and add a colorbar
+fig.get_legend().remove()
+fig.figure.colorbar(sm, ax=ax)
+df_coords_total_min_usage_core
+
+
 # ## NYC accidents per year
 # 
 # ### monthly intervalls
 
-# In[25]:
+# In[15]:
 
 
 #Einlesen der Unfall Daten von NYC
@@ -100,7 +210,7 @@ table_accidents = pd.read_csv("Data/Motor_Vehicle_Collisions_-_Crashes_20250319.
 table_accidents
 
 
-# In[26]:
+# In[16]:
 
 
 # restrict to year of interest
@@ -110,7 +220,7 @@ table_accidents_year = table_accidents[table_accidents["CRASH DATE"].dt.year == 
 table_accidents_year
 
 
-# In[27]:
+# In[17]:
 
 
 sum = 0
@@ -144,7 +254,7 @@ print(sum)
 print(results_accidents)
 
 
-# In[28]:
+# In[18]:
 
 
 df_accidents_year = pd.DataFrame.from_dict(results_accidents)
@@ -160,13 +270,13 @@ df_accidents_year_long = df_accidents_year_long.sort_values(by=['month', 'variab
 df_accidents_year_long
 
 
-# In[29]:
+# In[19]:
 
 
 rcParams['figure.figsize'] = 15,10
 
 
-# In[30]:
+# In[20]:
 
 
 # injured plot
@@ -176,7 +286,7 @@ df_accidents_year_long_injured
 sns.barplot(data = df_accidents_year_long_injured, x = 'month', y='value', hue='variable').set_title('NYC accident injuries per month in 2023')
 
 
-# In[31]:
+# In[21]:
 
 
 # killed plot
@@ -186,7 +296,7 @@ df_accidents_year_long_killed
 sns.barplot(data = df_accidents_year_long_killed, x = 'month', y='value', hue='variable').set_title('NYC accident deaths per month in 2023')
 
 
-# In[32]:
+# In[22]:
 
 
 # cyclists only (as relevant for citibikenyc, injured and killed)
@@ -201,7 +311,7 @@ df_cyclists.sort_values('month', inplace = True)
 df_cyclists
 
 
-# In[33]:
+# In[23]:
 
 
 g = sns.FacetGrid(df_cyclists, col="variable", sharey=False)
@@ -210,7 +320,7 @@ g.map(sns.scatterplot, "month", "value", s=100, alpha=.5)
 
 # ### per year
 
-# In[34]:
+# In[24]:
 
 
 accidents_coords = table_accidents_year[["LATITUDE", "LONGITUDE"]]
@@ -225,7 +335,7 @@ accidents_coords_cleaned.rename(columns={'LONGITUDE': 'longitude', 'LATITUDE': '
 accidents_coords_cleaned
 
 
-# In[35]:
+# In[25]:
 
 
 # make map with injuries/deaths per year
@@ -234,7 +344,7 @@ sns.set_style("whitegrid")
 sns.scatterplot(data=accidents_coords_cleaned, x="longitude", y="latitude", s=2, color = 'blue').set_title("Accidents "+ str(year), size=20)
 
 
-# In[36]:
+# In[26]:
 
 
 # only plot cyclist accidents
@@ -249,17 +359,17 @@ accidents_coords_cyclists_cleaned.rename(columns={'LONGITUDE': 'longitude', 'LAT
 accidents_coords_cyclists_cleaned
 
 
-# In[37]:
+# In[27]:
 
 
 sns.set_style("whitegrid")
 sns.scatterplot(data=accidents_coords_cyclists_cleaned, x="longitude", y="latitude", s=2, color = 'blue').set_title("Cyclist accidents "+ str(year), size=20)
 
 
-# In[38]:
+# In[28]:
 
 
-# now restrict to areas near much used citibike stations (for rent/arrival)
+# now restrict to areas near much used citibike stations (for rent/arrival) in core region
 # go through accidents and pick
 accidents_coords_cyclists["in_region"] = 0
 
@@ -271,10 +381,10 @@ for index, row in accidents_coords_cyclists.iterrows():
         print(count)
     count = count + 1
     close_enough = False
-    for index2, row2 in df_coords_total_min_usage.iterrows():
+    for index2, row2 in df_coords_total_geo_core.iterrows():
         distance = math.sqrt(math.pow((row['LONGITUDE'] - row2['longitude']) * 85118, 2.0) + math.pow((row['LATITUDE'] - row2['latitude']) * 111120, 2.0))
-        if distance < 1000:
-            close_enough = True
+        if distance < 500:
+            close_enough = True 
             break
     if close_enough:
         accidents_coords_cyclists.loc[index, "in_region"] = 1
@@ -283,7 +393,7 @@ for index, row in accidents_coords_cyclists.iterrows():
 accidents_coords_cyclists[accidents_coords_cyclists["in_region"] == 1]
 
 
-# In[39]:
+# In[29]:
 
 
 accidents_coords_cyclists_region = accidents_coords_cyclists[accidents_coords_cyclists["in_region"] == 1]
