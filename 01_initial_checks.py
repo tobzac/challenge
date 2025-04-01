@@ -12,8 +12,10 @@
 # imports für das notebook
 import pandas as pd
 import numpy as np
+from scipy.optimize import curve_fit
 import seaborn as sns
 from matplotlib import rcParams
+import matplotlib.pyplot as plt
 import datetime as dt
 # importing re for regular expressions
 import re
@@ -227,7 +229,7 @@ times["started_at"] = times["started_at"].dt.hour
 times["ended_at"] = times["ended_at"].dt.hour        
 times
 
-sns.histplot(data=times, x="started_at", shrink = 4).set_title("Distribution of start hour of rent during day")
+sns.histplot(data=times, x="started_at", discrete=True).set_title("Distribution of start hour of rent during day")
 
 
 # klar sichtbar: superposition 2er Verteilungen: einer Arbeits/Berufsverkehr Verteilung, welche um 8 Uhr Morgens und 17 Nachmittags peaked und einer Basis-Verteilung von Ausleihen, welche wahrscheinlich um 14/15 Uhr peaked. Hierdurch könnte man grob den Anteil des reinen Berufsverkehrs/transits in den Ausleihen schätzen. Weg zur Arbeit könnte Versicherungs-technisch besonders relevant sein...
@@ -235,7 +237,7 @@ sns.histplot(data=times, x="started_at", shrink = 4).set_title("Distribution of 
 # In[12]:
 
 
-sns.histplot(data=times, x="ended_at", shrink = 4).set_title("Distribution of end hour of rent during day")
+sns.histplot(data=times, x="ended_at", discrete=True).set_title("Distribution of end hour of rent during day")
 
 
 # In[13]:
@@ -267,10 +269,18 @@ df_types
 sns.barplot(data=df_types, x=df_types.index, y="occurence").set_title("classic or electrical")
 
 
+# In[16]:
+
+
+# number of occurence of specific star-end-combinations
+test_table_bikes_cleaned['start_end_combo'] = test_table_bikes_cleaned['start_station_name'] + ' - ' + test_table_bikes_cleaned['end_station_name']
+test_table_bikes_cleaned.value_counts('start_end_combo')
+
+
 # ### data before 2020
 # columns have different names and also some additional/different columns, e.g. gender and age is new and not present in newer data.
 
-# In[16]:
+# In[17]:
 
 
 #test_table_bikes_old = pd.read_csv("Data/2017-citibike-tripdata/1_January/201701-citibike-tripdata.csv_1.csv")
@@ -281,7 +291,7 @@ test_table_bikes_old = pd.read_csv("Data/2016-citibike-tripdata/6_June/201606-ci
 test_table_bikes_old
 
 
-# In[17]:
+# In[18]:
 
 
 #rename columns so that analysis workflow for newer data also works here:
@@ -304,7 +314,7 @@ elif 'usertype' in test_table_bikes_old.columns:
 test_table_bikes_old
 
 
-# In[18]:
+# In[19]:
 
 
 test_table_bikes_old["ended_at"] = pd.to_datetime(test_table_bikes_old["ended_at"], format='%m/%d/%Y %H:%M:%S')
@@ -322,7 +332,7 @@ test_table_bikes_old["direct_distance"] = np.sqrt(np.power(test_table_bikes_old[
 test_table_bikes_old
 
 
-# In[19]:
+# In[20]:
 
 
 print(test_table_bikes_old[test_table_bikes_old.isnull().any(axis=1)])
@@ -331,7 +341,7 @@ test_table_bikes_old_cleaned = test_table_bikes_old.dropna()
 print(test_table_bikes_old_cleaned[test_table_bikes_old_cleaned.isnull().any(axis=1)])
 
 
-# In[20]:
+# In[21]:
 
 
 # erste plots
@@ -365,7 +375,7 @@ sns.scatterplot(data=df_coords, x="longitude", y="latitude", s=12, hue='usage').
 df_coords
 
 
-# In[21]:
+# In[22]:
 
 
 # Verteilung Ausleih Startzeiten/Endzeiten
@@ -378,16 +388,138 @@ times["started_at"] = times["started_at"].dt.hour
 times["ended_at"] = times["ended_at"].dt.hour        
 times
 
-sns.histplot(data=times, x="started_at", shrink = 4).set_title("Distribution of start hour of rent during day")
-
-
-# In[22]:
-
-
-sns.histplot(data=times, x="ended_at", shrink = 4).set_title("Distribution of end hour of rent during day")
+sns.histplot(data=times, x="started_at", discrete = True).set_title("Distribution of start hour of rent during day")
 
 
 # In[23]:
+
+
+# Wochentag vs. Wochenende
+start_times['day'] = start_times['started_at'].dt.weekday
+start_times['workday'] = start_times['day'].isin([0, 1, 2, 3, 4]).astype(int)
+start_times_workday = start_times[start_times['workday'] == 1]
+start_times_weekend = start_times[start_times['workday'] == 0]
+
+start_times_workday["started_at"] = start_times_workday["started_at"].dt.hour 
+start_times_workday
+
+sns.histplot(data=start_times_workday, x="started_at", discrete = True).set_title("Distribution of start hour of rent during work days (Monday-Friday)")
+
+
+# In[24]:
+
+
+start_times_weekend["started_at"] = start_times_weekend["started_at"].dt.hour 
+start_times_weekend
+
+sns.histplot(data=start_times_weekend, x="started_at", discrete=True).set_title("Distribution of start hour of rent during weekends (Saturday-Sunday)")
+
+
+# In[25]:
+
+
+sns.histplot(data=times, x="ended_at", discrete=True).set_title("Distribution of end hour of rent during day")
+
+
+# ### estimate percentage of commuters in workdays
+
+# In[26]:
+
+
+#get values
+time_series = pd.DataFrame(start_times_workday['started_at'].value_counts()).sort_values(['started_at'])
+
+#symmetrize
+print(time_series['count'].min())
+print(time_series['count'].idxmin())
+time_series.head(time_series['count'].idxmin())
+
+time_series = pd.concat([time_series.tail(len(time_series)-time_series['count'].idxmin()), time_series.head(time_series['count'].idxmin())])
+time_series = time_series.reset_index()
+time_series
+
+
+# In[27]:
+
+
+x, y = (list(time_series.index), list(time_series['count']))
+print(x)
+print(y)
+
+plt.plot(x,y)
+plt.title('symmetrized workday start rent time distribution')
+plt.show()
+
+
+# In[28]:
+
+
+# fit 3 Gaussians to get estimate on percentage of commuters
+
+def func(x, *params):
+    y = np.zeros_like(x)
+    #for i in range(0, len(params), 3):
+    for i in range(0, len(params), 3):
+        ctr = params[i]
+        amp = params[i+1]
+        wid = params[i+2]
+        y = y + amp * np.exp( -((x - ctr)/wid)**2)
+    return y
+
+def single_func(x, ctr, amp, wid):
+    return amp * np.exp( -((x - ctr)/wid)**2)
+
+# guessed centers are 8-3=5, 15-3=12, 18-3=15
+guess = [5, 20000, 2, 12, 10000, 4, 15, 20000, 2]
+
+popt, pcov = curve_fit(func, x, y, p0=guess, maxfev = 2000)
+print(popt)
+fit = func(x, *popt)
+
+plt.plot(x, y)
+plt.plot(x, fit , 'r-')
+plt.title('Fit of 3 Gaussians to workday start rent time distribution')
+plt.show()
+
+
+# In[29]:
+
+
+# compute percentage of commute trips
+# compute area under all 3 curves with delta t = 1 (hour)
+area_all = sum(y)
+print(area_all)
+
+# compute area under 1st and last gaussian
+ctr_1 = popt[0]
+amp_1 = popt[1]
+wid_1 = popt[2]
+y1 = single_func(x, ctr_1, amp_1, wid_1)
+
+ctr_3 = popt[6]
+amp_3 = popt[7]
+wid_3 = popt[8]
+y3 = single_func(x, ctr_3, amp_3, wid_3)
+
+area_commuters = sum(y1+y3)
+print(area_commuters)
+
+#missing area
+ctr_2 = popt[3]
+amp_2 = popt[4]
+wid_2 = popt[5]
+y2 = single_func(x, ctr_2, amp_2, wid_2)
+
+area_missing = sum(y2)
+print(area_missing)
+
+# percentage commuters
+print(area_commuters/area_all)
+print(area_missing/area_all)
+print(area_commuters/area_all + area_missing/area_all)
+
+
+# In[30]:
 
 
 # Verteilung duration
@@ -399,11 +531,19 @@ duration
 sns.histplot(data=duration, x="duration", bins=200, binrange=(0,100)).set_title("Distribution of rent lengths")
 
 
-# In[24]:
+# In[31]:
 
 
 # Verteilung direct distances End-Startpunkt
 sns.histplot(data=test_table_bikes_old_cleaned, x="direct_distance", bins=200, binrange=(0,10000)).set_title("Distribution of direct distance between start/end point of trip")
+
+
+# In[32]:
+
+
+# number of occurence of specific star-end-combinations 
+test_table_bikes_old_cleaned['start_end_combo'] = test_table_bikes_old_cleaned['start_station_name'] + ' - ' + test_table_bikes_old_cleaned['end_station_name']
+test_table_bikes_old_cleaned.value_counts('start_end_combo')
 
 
 # ## Unfall Statistik NYC
@@ -411,7 +551,7 @@ sns.histplot(data=test_table_bikes_old_cleaned, x="direct_distance", bins=200, b
 # Download als csv Datei von https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95/about_data
 # 
 
-# In[25]:
+# In[33]:
 
 
 #Einlesen der Unfall Daten von NYC
@@ -420,20 +560,20 @@ table_accidents = pd.read_csv("Data/Motor_Vehicle_Collisions_-_Crashes_20250319.
 table_accidents.dtypes
 
 
-# In[26]:
+# In[34]:
 
 
 #crash_dates = list(table_accidents["CRASH DATE"].unique())
 #print(crash_dates)
 
 
-# In[27]:
+# In[35]:
 
 
 table_accidents
 
 
-# In[28]:
+# In[36]:
 
 
 # check NaNs for injury/death numbers
@@ -447,7 +587,7 @@ table_injuries_deaths.dropna(inplace =True)
 print("Rows after dropping nans: " + str(len(table_injuries_deaths)))
 
 
-# In[29]:
+# In[37]:
 
 
 # check NaNs for longitude/latitude
@@ -459,7 +599,7 @@ table_long_lat.dropna(inplace =True)
 print("Rows after dropping nans: " + str(len(table_long_lat)))
 
 
-# In[30]:
+# In[38]:
 
 
 # check NaNs for vehicle 1 info
@@ -469,4 +609,17 @@ print("vehicle 1 columns: ")
 print("Rows before dropping nans: " + str(len(table_vehicle_1)))
 table_vehicle_1.dropna(inplace =True)
 print("Rows after dropping nans: " + str(len(table_vehicle_1)))
+
+
+# In[39]:
+
+
+#check for cyclist accidents
+table_cyclist_accidents = table_accidents[table_accidents['NUMBER OF CYCLIST INJURED'] > 0]
+
+columns_to_check = ['CONTRIBUTING FACTOR VEHICLE 1', 'CONTRIBUTING FACTOR VEHICLE 2', 'CONTRIBUTING FACTOR VEHICLE 3',\
+'CONTRIBUTING FACTOR VEHICLE 4', 'CONTRIBUTING FACTOR VEHICLE 5', 'COLLISION_ID',\
+'VEHICLE TYPE CODE 1', 'VEHICLE TYPE CODE 2', 'VEHICLE TYPE CODE 3',\
+'VEHICLE TYPE CODE 4', 'VEHICLE TYPE CODE 5', 'NUMBER OF CYCLIST INJURED']
+table_cyclist_accidents[columns_to_check]
 

@@ -32,7 +32,7 @@ import analysis_functions
 # In[2]:
 
 
-year = 2020
+year = 2024
 result_map, stations_analysis_list = analysis_functions.analysis_one_year(year, 'intermediate_results/df_geocode_all_stations.csv', 'normal')
 
 
@@ -400,4 +400,48 @@ accidents_coords_cyclists_region = accidents_coords_cyclists[accidents_coords_cy
 
 sns.set_style("whitegrid")
 sns.scatterplot(data=accidents_coords_cyclists_region, x="LONGITUDE", y="LATITUDE", s=2, color = 'blue').set_title("Cyclist accidents "+ str(year), size=20)
+
+
+# In[30]:
+
+
+table_accidents_year = table_accidents[table_accidents["CRASH DATE"].dt.year == year]
+table_accidents_year
+
+
+# In[31]:
+
+
+# check crash times/occurences for weekends/weekdays
+table_accidents_year['CRASH DATE'] = pd.to_datetime(table_accidents_year['CRASH DATE'])
+table_accidents_year['hour'] = pd.to_datetime(table_accidents_year['CRASH TIME'], format='%H:%M').dt.strftime("%H").astype(int)
+table_accidents_year['day'] = table_accidents_year['CRASH DATE'].dt.weekday
+table_accidents_year['workday'] = table_accidents_year['day'].isin([0, 1, 2, 3, 4]).astype(int)
+table_accidents_year_workday = table_accidents_year[table_accidents_year['workday'] == 1]
+table_accidents_year_weekend = table_accidents_year[table_accidents_year['workday'] == 0]
+
+# restrict to cyclists involved
+table_accidents_cyclist_year_workday = table_accidents_year_workday[(table_accidents_year_workday["NUMBER OF CYCLIST INJURED"] > 0) | (table_accidents_year_workday["NUMBER OF CYCLIST KILLED"] > 0)]
+table_accidents_cyclist_year_weekend = table_accidents_year_weekend[(table_accidents_year_weekend["NUMBER OF CYCLIST INJURED"] > 0) | (table_accidents_year_weekend["NUMBER OF CYCLIST KILLED"] > 0)]
+
+table_accidents_cyclist_year_workday[table_accidents_cyclist_year_workday['hour'] == 6]
+#table_accidents_cyclist_year_weekend
+
+
+# In[32]:
+
+
+times_workday = table_accidents_cyclist_year_workday[['hour', 'day']]
+#times_workday.sort_values('hour')
+times_workday
+sns.histplot(data=times_workday, x="hour", discrete=True).set_title("Distribution of times of bicycle accidents during workdays (Monday-Friday)")
+
+
+# In[33]:
+
+
+times_weekend = table_accidents_cyclist_year_weekend[['hour', 'day']]
+#times_workday.sort_values('hour')
+times_weekend
+sns.histplot(data=times_weekend, x="hour", discrete=True).set_title("Distribution of times of bicycle accidents during weekends (Saturday-Sunday)")
 
