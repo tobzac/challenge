@@ -7,22 +7,31 @@ import sys
 import pandas as pd
 
 
-# function to download file from url
-# url: URL for zip folder to download
-# save_path: string of folder on disk, e.g. Data/downloads/folder
 def download_url(url: str, save_path: str) -> None:
+    """
+    function to perform per month analysis
+
+    :param url: full URL for zip folder to download
+    :param save_path: string of folder on disk, e.g. Data/downloads/folder
+    """
+
     # download zip file
     r = requests.get(url, stream=True)
     myzipfile = zipfile.ZipFile(io.BytesIO(r.content))
     myzipfile.extractall(save_path)
 
 
-# function to perform per month analysis
-# df_month: full (concatenated) dataframe with data from whole month
-# n_bike_trips: number of bike trips for whole month
-# df_coords: data frame with all used unique stations and their lng/lat coords
 def analysis_per_month(df_month: pd.DataFrame, df_geocode_all_stations: pd.DataFrame, analysis_type: str) \
         -> tuple[int, pd.DataFrame]:
+    """
+    function to perform per month analysis
+
+    :param df_month: full (concatenated) dataframe with data from whole month
+    :param df_geocode_all_stations: data frame with geocode annotated data for all stations
+    :param: analysis_type: "normal" for unrestricted, "core_region" for restriction to core region
+    :return n_bike_trips: number of bike trips for whole month
+    :return df_coords: data frame with all used unique stations and their lng/lat coords
+    """
 
     # cleaned list for analyses, where values are needed
     df_month_cleaned = df_month.dropna()
@@ -78,13 +87,17 @@ def analysis_per_month(df_month: pd.DataFrame, df_geocode_all_stations: pd.DataF
     return n_bike_trips, df_coords
 
 
-# summarize number for whole year
-# result_map: map: key: month, value: number of trips
-# stations_analysis_list: list of dataframes of df_coords (unique stations and their usage in month)
-# s: total number of bike trips per year
-# df_coords_year: data frame with unique stations and usage
 def analysis_summary_year(results_map: dict, stations_analysis_list: list[pd.DataFrame]) \
         -> tuple[int, pd.DataFrame]:
+    """
+        function to summarize numbers/results for whole year
+
+    :param result_map: dictionary key: month, value: number of trips
+    :param stations_analysis_list: list of dataframes of df_coords (unique stations and their usage in month)
+    :return s: total number of bike trips per year
+    :return df_coords_year: data frame with unique stations and usage
+    """
+
     # -------------------------------------------
     # sum up all bike trips to get total number:
     s = 0
@@ -108,12 +121,17 @@ def analysis_summary_year(results_map: dict, stations_analysis_list: list[pd.Dat
     return s, df_coords_year
 
 
-# function to perform an analysis for one year
-# year: year for analysis
-# result_map: map: key: month, value: number of trips
-# stations_analysis_list: list of dataframes of df_coords (unique stations and their usage in month)
 def analysis_one_year(year: int, geocode_data_file_name: str, analysis_type: str) \
         -> tuple[dict, list[pd.DataFrame]]:
+    """
+    function to perform per month analysis
+
+    :param year: full (concatenated) dataframe with data from whole month
+    :param geocode_data_file_name: data frame with geocode annotated data for all stations
+    :param: analysis_type: "normal" for unrestricted, "core_region" for restriction to core region
+    :return result_map: dictionary key: month, value: number of trips
+    :return stations_analysis_list: list of dataframes of df_coords (unique stations and their usage in month)
+    """
 
     # results
     result_map = {}
