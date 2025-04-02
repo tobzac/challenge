@@ -33,16 +33,21 @@ import analysis_functions
 
 
 year = 2024
-result_map, stations_analysis_list = analysis_functions.analysis_one_year(year, 'intermediate_results/df_geocode_all_stations.csv', 'normal')
 
 
 # In[3]:
 
 
-result_map_core, stations_analysis_list_core = analysis_functions.analysis_one_year(year, 'intermediate_results/df_geocode_all_stations.csv', 'core_region')
+result_map, stations_analysis_list = analysis_functions.analysis_one_year(year, 'intermediate_results/df_geocode_all_stations.csv', 'normal')
 
 
 # In[4]:
+
+
+result_map_core, stations_analysis_list_core = analysis_functions.analysis_one_year(year, 'intermediate_results/df_geocode_all_stations.csv', 'core_region')
+
+
+# In[5]:
 
 
 # plot
@@ -59,7 +64,7 @@ sns.barplot(data = df_bike_trips_year, x = 'month', y = 'number of trips', color
 
 # ### all year stats
 
-# In[5]:
+# In[6]:
 
 
 # year summary
@@ -76,7 +81,7 @@ df_coords_total_min_usage = df_coords_total_min_usage[(df_coords_total_min_usage
 df_coords_total_min_usage
 
 
-# In[6]:
+# In[7]:
 
 
 sns.set_style("whitegrid")
@@ -95,7 +100,7 @@ fig.figure.colorbar(sm, ax=ax)
 df_coords_total_min_usage
 
 
-# In[7]:
+# In[8]:
 
 
 df_geocode_all_stations = pd.read_csv('intermediate_results/df_geocode_all_stations.csv', index_col=0)
@@ -106,7 +111,7 @@ df_coords_total_geo = df_coords_total.join(df_geocode_all_stations)
 df_coords_total_geo
 
 
-# In[8]:
+# In[9]:
 
 
 # also restrict citibike data to core region only
@@ -134,7 +139,7 @@ plt.plot([-73.965, -73.99], [40.755, 40.78], linewidth=2)
 #okay
 
 
-# In[9]:
+# In[10]:
 
 
 ## then count only on those stations for each year
@@ -142,7 +147,7 @@ test_table_bikes = pd.read_csv("Data/2020-citibike-tripdata/202001-citibike-trip
 test_table_bikes
 
 
-# In[10]:
+# In[11]:
 
 
 # check restriction to subset of stations in df_coords_total_geo_core data frame
@@ -152,19 +157,19 @@ test_table_bikes_restricted = test_table_bikes[(test_table_bikes['start_station_
 test_table_bikes_restricted
 
 
-# In[11]:
+# In[12]:
 
 
 df_coords_total_geo_core
 
 
-# In[12]:
+# In[13]:
 
 
 df_coords_total_geo_core.loc[['University Pl & E 14 St']]
 
 
-# In[13]:
+# In[14]:
 
 
 n_total_core, df_coords_total_core = analysis_functions.analysis_summary_year(result_map_core, stations_analysis_list_core)
@@ -178,7 +183,7 @@ df_coords_total_min_usage_core = df_coords_total_min_usage_core[(df_coords_total
 df_coords_total_min_usage_core
 
 
-# In[14]:
+# In[15]:
 
 
 sns.set_style("whitegrid")
@@ -201,7 +206,7 @@ df_coords_total_min_usage_core
 # 
 # ### monthly intervalls
 
-# In[15]:
+# In[16]:
 
 
 #Einlesen der Unfall Daten von NYC
@@ -210,7 +215,7 @@ table_accidents = pd.read_csv("Data/Motor_Vehicle_Collisions_-_Crashes_20250319.
 table_accidents
 
 
-# In[16]:
+# In[17]:
 
 
 # restrict to year of interest
@@ -220,7 +225,7 @@ table_accidents_year = table_accidents[table_accidents["CRASH DATE"].dt.year == 
 table_accidents_year
 
 
-# In[17]:
+# In[18]:
 
 
 sum = 0
@@ -254,7 +259,7 @@ print(sum)
 print(results_accidents)
 
 
-# In[18]:
+# In[19]:
 
 
 df_accidents_year = pd.DataFrame.from_dict(results_accidents)
@@ -270,33 +275,33 @@ df_accidents_year_long = df_accidents_year_long.sort_values(by=['month', 'variab
 df_accidents_year_long
 
 
-# In[19]:
+# In[20]:
 
 
 rcParams['figure.figsize'] = 15,10
 
 
-# In[20]:
+# In[21]:
 
 
 # injured plot
 df_accidents_year_long_injured = df_accidents_year_long[df_accidents_year_long["variable"].str.contains("INJURED")]
 df_accidents_year_long_injured
 
-sns.barplot(data = df_accidents_year_long_injured, x = 'month', y='value', hue='variable').set_title('NYC accident injuries per month in 2023')
+sns.barplot(data = df_accidents_year_long_injured, x = 'month', y='value', hue='variable').set_title('NYC accident injuries per month in '+str(year))
 
 
-# In[21]:
+# In[22]:
 
 
 # killed plot
 df_accidents_year_long_killed = df_accidents_year_long[df_accidents_year_long["variable"].str.contains("KILLED")]
 df_accidents_year_long_killed
 
-sns.barplot(data = df_accidents_year_long_killed, x = 'month', y='value', hue='variable').set_title('NYC accident deaths per month in 2023')
+sns.barplot(data = df_accidents_year_long_killed, x = 'month', y='value', hue='variable').set_title('NYC accident deaths per month in '+str(year))
 
 
-# In[22]:
+# In[23]:
 
 
 # cyclists only (as relevant for citibikenyc, injured and killed)
@@ -311,7 +316,7 @@ df_cyclists.sort_values('month', inplace = True)
 df_cyclists
 
 
-# In[23]:
+# In[24]:
 
 
 g = sns.FacetGrid(df_cyclists, col="variable", sharey=False)
@@ -320,7 +325,7 @@ g.map(sns.scatterplot, "month", "value", s=100, alpha=.5)
 
 # ### per year
 
-# In[24]:
+# In[25]:
 
 
 accidents_coords = table_accidents_year[["LATITUDE", "LONGITUDE"]]
@@ -335,7 +340,7 @@ accidents_coords_cleaned.rename(columns={'LONGITUDE': 'longitude', 'LATITUDE': '
 accidents_coords_cleaned
 
 
-# In[25]:
+# In[26]:
 
 
 # make map with injuries/deaths per year
@@ -344,7 +349,7 @@ sns.set_style("whitegrid")
 sns.scatterplot(data=accidents_coords_cleaned, x="longitude", y="latitude", s=2, color = 'blue').set_title("Accidents "+ str(year), size=20)
 
 
-# In[26]:
+# In[27]:
 
 
 # only plot cyclist accidents
@@ -359,14 +364,14 @@ accidents_coords_cyclists_cleaned.rename(columns={'LONGITUDE': 'longitude', 'LAT
 accidents_coords_cyclists_cleaned
 
 
-# In[27]:
+# In[28]:
 
 
 sns.set_style("whitegrid")
 sns.scatterplot(data=accidents_coords_cyclists_cleaned, x="longitude", y="latitude", s=2, color = 'blue').set_title("Cyclist accidents "+ str(year), size=20)
 
 
-# In[28]:
+# In[29]:
 
 
 # now restrict to areas near much used citibike stations (for rent/arrival) in core region
@@ -393,7 +398,7 @@ for index, row in accidents_coords_cyclists.iterrows():
 accidents_coords_cyclists[accidents_coords_cyclists["in_region"] == 1]
 
 
-# In[29]:
+# In[30]:
 
 
 accidents_coords_cyclists_region = accidents_coords_cyclists[accidents_coords_cyclists["in_region"] == 1]
@@ -402,14 +407,14 @@ sns.set_style("whitegrid")
 sns.scatterplot(data=accidents_coords_cyclists_region, x="LONGITUDE", y="LATITUDE", s=2, color = 'blue').set_title("Cyclist accidents "+ str(year), size=20)
 
 
-# In[30]:
+# In[31]:
 
 
 table_accidents_year = table_accidents[table_accidents["CRASH DATE"].dt.year == year]
 table_accidents_year
 
 
-# In[31]:
+# In[32]:
 
 
 # check crash times/occurences for weekends/weekdays
@@ -428,7 +433,7 @@ table_accidents_cyclist_year_workday[table_accidents_cyclist_year_workday['hour'
 #table_accidents_cyclist_year_weekend
 
 
-# In[32]:
+# In[33]:
 
 
 times_workday = table_accidents_cyclist_year_workday[['hour', 'day']]
@@ -437,7 +442,7 @@ times_workday
 sns.histplot(data=times_workday, x="hour", discrete=True).set_title("Distribution of times of bicycle accidents during workdays (Monday-Friday)")
 
 
-# In[33]:
+# In[34]:
 
 
 times_weekend = table_accidents_cyclist_year_weekend[['hour', 'day']]

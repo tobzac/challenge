@@ -623,3 +623,11 @@ columns_to_check = ['CONTRIBUTING FACTOR VEHICLE 1', 'CONTRIBUTING FACTOR VEHICL
 'VEHICLE TYPE CODE 4', 'VEHICLE TYPE CODE 5', 'NUMBER OF CYCLIST INJURED']
 table_cyclist_accidents[columns_to_check]
 
+
+# In[40]:
+
+
+# check what years are actually in it
+years_in_table = table_accidents['CRASH DATE'].apply(lambda x: x.split('/')[2]).unique()
+years_in_table
+
