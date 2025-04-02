@@ -1,0 +1,2 @@
+sum of all weekend trips	sum of all workday trips	percentage commuters workday
+7982637	21856169	0.2557494480494092

@@ -1,0 +1,2 @@
+sum of all weekend accidents	sum of all workday accidents	percentage commuters workday accidents
+1193	3501	0.2842293731787996
