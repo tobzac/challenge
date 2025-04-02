@@ -6,7 +6,7 @@
 # Eventually collect analysis for many years and plot results.
 # Perform same steps as done in notebook 01_initial_checks, for simplicity only use start times for this analysis.
 
-# In[316]:
+# In[1]:
 
 
 import os
@@ -22,14 +22,14 @@ import seaborn as sns
 
 # #### citibike data
 
-# In[286]:
+# In[2]:
 
 
 year = 2024
 # for now only full analysis, nto for core_region
 
 
-# In[287]:
+# In[3]:
 
 
 #read in start times for a certain year for each month
@@ -96,7 +96,7 @@ for month in month_list:
     time_data_list_year.append(df_month_start_time)
 
 
-# In[288]:
+# In[4]:
 
 
 # do count values for each month separately and then join the results
@@ -127,7 +127,7 @@ for i, time_data in enumerate(time_data_list_year):
     count = i + 1
 
 
-# In[289]:
+# In[5]:
 
 
 # merge df into one and create sum column
@@ -145,7 +145,7 @@ time_series_workday_year
 #time_series_weekend_year
 
 
-# In[290]:
+# In[6]:
 
 
 x, y = (list(time_series_workday_year.index), list(time_series_workday_year['total']))
@@ -158,7 +158,7 @@ plt.show()
 print(time_series_workday_year['total'].sum())
 
 
-# In[291]:
+# In[7]:
 
 
 x, y = (list(time_series_weekend_year.index), list(time_series_weekend_year['total']))
@@ -171,7 +171,7 @@ plt.show()
 print(time_series_weekend_year['total'].sum())
 
 
-# In[292]:
+# In[8]:
 
 
 # write out to save time as it takes time to generate them
@@ -179,7 +179,7 @@ time_series_workday_year.to_csv("intermediate_results/time_series_workday_year_"
 time_series_weekend_year.to_csv("intermediate_results/time_series_weekend_year_"+ str(year)+".txt")
 
 
-# In[293]:
+# In[9]:
 
 
 #symmetrize for fitting
@@ -193,7 +193,7 @@ time_series = time_series[['time', 'total']]
 time_series
 
 
-# In[294]:
+# In[10]:
 
 
 x, y = (list(time_series.index), list(time_series['total']))
@@ -201,7 +201,7 @@ print(x)
 print(y)
 
 
-# In[295]:
+# In[11]:
 
 
 # fit 3 Gaussians to get estimate on percentage of commuters
@@ -232,7 +232,7 @@ plt.title('Fit of 3 Gaussians to workday start rent time distribution for year '
 plt.show()
 
 
-# In[296]:
+# In[12]:
 
 
 # compute percentage of commute trips
@@ -269,7 +269,7 @@ print(area_missing/area_all)
 print(area_commuters/area_all + area_missing/area_all)
 
 
-# In[297]:
+# In[13]:
 
 
 #write also out to file
@@ -280,7 +280,7 @@ with open("intermediate_results/commuter_results_"+str(year)+".txt", "w") as f:
     f.write(str(time_series_weekend_year['total'].sum())+"\t"+str(time_series_workday_year['total'].sum())+"\t"+str(area_commuters/area_all)+"\n")
 
 
-# In[325]:
+# In[14]:
 
 
 # read in commuter results
@@ -310,7 +310,7 @@ df_result['commuters_workdays'] = df_result['workday_trips'] * df_result['perc_c
 df_result
 
 
-# In[326]:
+# In[15]:
 
 
 # plot commuter percentage over years and workday/weekend ratio
@@ -318,7 +318,7 @@ sns.lineplot(data=df_result, x='year', y='perc_commuters_workdays')
 plt.ylim(0,1)
 
 
-# In[328]:
+# In[16]:
 
 
 # plot commuter percentage over years and workday/weekend ratio
@@ -327,7 +327,7 @@ sns.lineplot(data=df_result, x='year', y='commuters_workdays')
 
 # #### NYC accidents data
 
-# In[299]:
+# In[17]:
 
 
 #Einlesen der Unfall Daten von NYC
@@ -335,7 +335,7 @@ table_accidents = pd.read_csv("Data/Motor_Vehicle_Collisions_-_Crashes_20250319.
 table_accidents
 
 
-# In[300]:
+# In[18]:
 
 
 # restrict to year of interest
@@ -345,7 +345,7 @@ table_accidents_year = table_accidents[table_accidents["CRASH DATE"].dt.year == 
 table_accidents_year
 
 
-# In[301]:
+# In[19]:
 
 
 table_accidents_year['hour'] = pd.to_datetime(table_accidents_year['CRASH TIME'], format='%H:%M').dt.strftime("%H").astype(int)
@@ -362,7 +362,7 @@ table_accidents_cyclist_year_workday
 table_accidents_cyclist_year_weekend
 
 
-# In[302]:
+# In[20]:
 
 
 accidents_time_series_workday = pd.DataFrame(table_accidents_cyclist_year_workday['hour'].value_counts()).sort_values(['hour'])
@@ -370,7 +370,7 @@ accidents_time_series_weekend = pd.DataFrame(table_accidents_cyclist_year_weeken
 accidents_time_series_workday
 
 
-# In[303]:
+# In[21]:
 
 
 x, y = (list(accidents_time_series_workday.index), list(accidents_time_series_workday['count']))
@@ -383,7 +383,7 @@ plt.show()
 print(accidents_time_series_workday['count'].sum())
 
 
-# In[304]:
+# In[22]:
 
 
 x, y = (list(accidents_time_series_weekend.index), list(accidents_time_series_weekend['count']))
@@ -396,7 +396,7 @@ plt.show()
 print(accidents_time_series_weekend['count'].sum())
 
 
-# In[305]:
+# In[23]:
 
 
 #symmetrize for fitting
@@ -409,7 +409,7 @@ time_series = time_series.reset_index()
 time_series
 
 
-# In[306]:
+# In[24]:
 
 
 x, y = (list(time_series.index), list(time_series['count']))
@@ -417,7 +417,7 @@ print(x)
 print(y)
 
 
-# In[307]:
+# In[25]:
 
 
 # guessed centers are 8-3=5, 15-3=12, 18-3=15
@@ -433,7 +433,7 @@ plt.title('Fit of 3 Gaussians to workday accident time distribution for year '+s
 plt.show()
 
 
-# In[308]:
+# In[26]:
 
 
 # compute percentage of commute trips
@@ -470,7 +470,7 @@ print(area_missing/area_all)
 print(area_commuters/area_all + area_missing/area_all)
 
 
-# In[309]:
+# In[27]:
 
 
 #write also out to file
@@ -481,8 +481,50 @@ with open("intermediate_results/accident_commuter_results_"+str(year)+".txt", "w
     f.write(str(accidents_time_series_weekend['count'].sum())+"\t"+str(accidents_time_series_workday['count'].sum())+"\t"+str(area_commuters/area_all)+"\n")
 
 
-# In[ ]:
+# In[28]:
 
 
 # also read in and plot
+results_accidents = {}
+for year in [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]:
+    with open("intermediate_results/accident_commuter_results_"+str(year)+".txt", "r") as f:
+        for line in f:
+            if not line.startswith("sum"):
+                entries = line.split("\t")
+                sum_weekend_trips = entries[0]
+                sum_workday_trips = entries[1]
+                percentage_commuters_workday = entries[2]
+
+    if 'weekend_trips' in results_accidents.keys():
+        results_accidents['weekend_trips'].append(int(sum_weekend_trips)) 
+        results_accidents['workday_trips'].append(int(sum_workday_trips))
+        results_accidents['perc_commuters_workdays'].append(float(percentage_commuters_workday))
+        results_accidents['year'].append(year)
+    else:
+        results_accidents['weekend_trips'] = [int(sum_weekend_trips)]
+        results_accidents['workday_trips'] = [int(sum_workday_trips)]
+        results_accidents['perc_commuters_workdays'] = [float(percentage_commuters_workday)]
+        results_accidents['year'] = [year]
+
+df_result_accidents = pd.DataFrame.from_dict(results_accidents)
+df_result_accidents['commuters_workdays'] = df_result_accidents['workday_trips'] * df_result_accidents['perc_commuters_workdays']
+df_result_accidents
+
+
+# In[29]:
+
+
+# plot commuter percentage over years and workday/weekend ratio
+sns.lineplot(data=df_result_accidents, x='year', y='perc_commuters_workdays')
+plt.ylim(0,1)
+
+
+# the plot shows that for 2019 and 2015 "something is off". It was also seen that for those years the plot didn´t function well, as there was too little data and not 3 gaussians could really be identified. Same then below.\
+# For the fit to work one needs a shoulder between the 2 commuter peaks, but as the number of bicycle accidents is quite low, for some years it doesn´t work. In contrast it seems to work properly for all years for the citibike data, as there is much better statistics.
+
+# In[30]:
+
+
+# plot commuter percentage over years and workday/weekend ratio
+sns.lineplot(data=df_result_accidents, x='year', y='commuters_workdays')
 
